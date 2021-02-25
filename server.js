@@ -58,14 +58,16 @@ rl.on('line', (line) => { // Command line parsing!
 				var rowstring = "";
 				for (j=0; j<board[i].length; j++){
 					
-					if (board[i][j] == -1) {
+					if (board[j][i] == -1) {
 						rowstring += ".";
 					}else{
-						rowstring += "#";
+						rowstring += "#"; // TODO add a unique single-character for every player just for this command
 					}
 				}
 				console.log(rowstring);
 			}
+			console.log("");
+			break;
 	}
 });
 
@@ -81,10 +83,47 @@ io.on('connection', function (socket) {
 	io.emit("playerJoin", playerJoining, players, board);
 	console.log(playerJoining.name + " has joined the server (ID: " + playerJoining.id + ")" )
 	
+	socket.on("playerAddSocket", function (playerid, socketid) {
+		players[playerid].socket = socketid;
+	});
+	
+	socket.on("placeStoneRequest", function(x, y){
+		
+		var placer = getPlayerFromSocket(socket);
+		board[x][y] = placer.id;
+		
+		io.emit("boardUpdate", board);
+	});
+	
+	socket.on("disconnect", function () {
+
+		playerLeaving = getPlayerFromSocket(socket);
+		 
+		if (playerLeaving != -1){
+			onPlayerLeave(playerLeaving);
+		}
+		
+	});
 });
 
 setInterval(()=> {update()}, 50);
 
 var newID = function(){
 	return Math.round(Math.random() * 100000);
+}
+
+var getPlayerFromSocket = function(socket_in){
+	for (i in players){
+		if (socket_in.id == players[i].socket) {
+			return players[i];
+		}
+	}
+	return -1;
+}
+var onPlayerLeave = function(p){
+	var ind = p.id;
+	console.log( p.name + " has left the server (ID: " + ind + ")")
+	delete players[p.id];
+	
+	io.emit("playerLeave", ind, players);
 }
