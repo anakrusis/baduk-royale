@@ -101,12 +101,13 @@ io.on('connection', function (socket) {
 	socket.on("placeStoneRequest", function(x, y){
 		// bounds check
 		if (x >= 0 && x < board[0].length && y >= 0 && y < board.length){
-		
-			var placer = getPlayerFromSocket(socket);
-			board[x][y] = placer.id;
 			
-			io.emit("boardUpdate", board);
-		
+			if (board[x][y] == -1){
+					
+				onPlace(socket, x,y);
+				
+				io.emit("boardUpdate", board);
+			}
 		}
 	});
 	
@@ -135,6 +136,70 @@ var getPlayerFromSocket = function(socket_in){
 	}
 	return -1;
 }
+
+var onPlace = function(socket, x,y){
+	var placer = getPlayerFromSocket(socket);
+	board[x][y] = placer.id;
+	
+	checkContiguousAdjacencies(x,y,x,y-1,placer.id);
+	checkContiguousAdjacencies(x,y,x,y+1,placer.id);
+	checkContiguousAdjacencies(x,y,x+1,y,placer.id);
+	checkContiguousAdjacencies(x,y,x-1,y,placer.id);
+}
+
+var checkContiguousAdjacencies = function(attackerx,attackery,victimx,victimy, attackercolor){
+	surrounded = true;
+	
+	contiguousX = []; contiguousY = [];
+	checkAdjacencies(victimx, victimy, getTile(victimx,victimy,attackercolor), getTile(attackerx,attackery,attackercolor) );
+	
+	console.log(surrounded)
+	
+	if (surrounded){
+		
+		for (i=0; i<contiguousX.length; i++){
+
+			board[ contiguousX[i] ][ contiguousY[i] ] = -1;
+		
+		}
+	}
+}
+
+var checkAdjacencies = function(x,y, victimcolor, attackercolor){
+	
+	console.log("x:" + x + ", y:" + y + ", victim:" + victimcolor + ", attacker:" + attackercolor)
+	
+	if ( victimcolor == attackercolor || victimcolor == -1 ){ surrounded=false; return; }
+	
+	// if this tile is already a member of the Contiguous group then we just stop.
+	for (i=0; i<contiguousX.length; i++){
+		if (contiguousX[i] == x && contiguousY[i] == y){
+			return;
+		}
+	}
+
+	if ( getTile(x,y,attackercolor) == attackercolor ){ return; }
+	if ( getTile(x,y+1,attackercolor) != attackercolor && getTile(x,y+1,attackercolor) != victimcolor ){ surrounded=false; return; }
+	if ( getTile(x,y-1,attackercolor) != attackercolor && getTile(x,y-1,attackercolor) != victimcolor ){ surrounded=false; return; }
+	if ( getTile(x+1,y,attackercolor) != attackercolor && getTile(x+1,y,attackercolor) != victimcolor ){ surrounded=false; return; }
+	if ( getTile(x-1,y,attackercolor) != attackercolor && getTile(x-1,y,attackercolor) != victimcolor ){ surrounded=false; return; }
+	
+	contiguousX.push(x); contiguousY.push(y);
+	
+	checkAdjacencies(x,y+1,victimcolor,attackercolor);
+	checkAdjacencies(x,y-1,victimcolor,attackercolor);
+	checkAdjacencies(x+1,y,victimcolor,attackercolor);
+	checkAdjacencies(x-1,y,victimcolor,attackercolor);
+}
+
+var getTile = function(x,y, attackercolor){
+	if (x >= 0 && x < board[0].length && y >= 0 && y < board.length){
+		return board[x][y];
+	}else{
+		return attackercolor;
+	}
+}
+
 var onPlayerLeave = function(p){
 	
 	for (i=0; i<board.length; i++){
