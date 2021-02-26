@@ -141,19 +141,66 @@ var onPlace = function(socket, x,y){
 	var placer = getPlayerFromSocket(socket);
 	board[x][y] = placer.id;
 	
+	// Dede meaning the move is suicidal and should not be allowed
+	dede = true; attacker = -2; dedesCheckedX = []; dedesCheckedY = [];
+	checkIfDede(x, y, placer.id);
+	
+	if (!dede) {  } else { board[x][y] = -1; console.log("move is suicidal") };
+	
 	checkContiguousAdjacencies(x,y,x,y-1,placer.id);
 	checkContiguousAdjacencies(x,y,x,y+1,placer.id);
 	checkContiguousAdjacencies(x,y,x+1,y,placer.id);
 	checkContiguousAdjacencies(x,y,x-1,y,placer.id);
 }
 
+var checkIfDede = function(x, y, victimcolor){
+
+	console.log("x:" + x + ", y:" + y + ", victim:" + victimcolor + ", attacker:" + attacker)
+
+	// if this tile is already a member of the Dedes Checked group then we just stop.
+	for (i=0; i<dedesCheckedX.length; i++){
+		if (dedesCheckedX[i] == x && dedesCheckedY[i] == y){
+			console.log("tile already checked")
+			return;
+		}
+	}
+	
+	if (getTile2(x,y) == -1){ dede=false; return; }
+	if (getTile2(x,y) == attacker || getTile2(x,y) == null ){ return; };
+	
+	if ( getTile2(x+1,y) != -1 && getTile2(x+1,y) != victimcolor && getTile2(x+1,y)!= null && attacker == -2){
+		attacker = getTile2(x+1,y);
+	}
+	if ( getTile2(x-1,y) != -1 && getTile2(x-1,y) != victimcolor && getTile2(x-1,y)!= null && attacker == -2){
+		attacker = getTile2(x-1,y);
+	}
+	if ( getTile2(x,y+1) != -1 && getTile2(x,y+1) != victimcolor && getTile2(x,y+1)!= null && attacker == -2){
+		attacker = getTile2(x,y+1);
+	}
+	if ( getTile2(x,y-1) != -1 && getTile2(x,y-1) != victimcolor && getTile2(x,y-1)!= null && attacker == -2){
+		attacker = getTile2(x,y-1);
+	}
+	
+	if ( (getTile2(x+1,y) != attacker && attacker != -2) && getTile2(x+1,y) != victimcolor && getTile2(x+1,y) != null ) { dede=false; return; }
+	if ( (getTile2(x-1,y) != attacker && attacker != -2) && getTile2(x-1,y) != victimcolor && getTile2(x-1,y) != null) { dede=false; return; }
+	if ( (getTile2(x,y+1) != attacker && attacker != -2) && getTile2(x,y+1) != victimcolor && getTile2(x,y+1) != null) { dede=false; return; }
+	if ( (getTile2(x,y-1) != attacker && attacker != -2) && getTile2(x,y-1) != victimcolor && getTile2(x,y-1) != null) { dede=false; return; }
+	
+	dedesCheckedX.push(x); dedesCheckedY.push(y);
+	
+	checkIfDede(x+1,y,victimcolor);
+	checkIfDede(x-1,y,victimcolor);
+	checkIfDede(x,y+1,victimcolor);
+	checkIfDede(x,y-1,victimcolor);
+}
+
 var checkContiguousAdjacencies = function(attackerx,attackery,victimx,victimy, attackercolor){
 	surrounded = true;
 	
 	contiguousX = []; contiguousY = [];
-	checkAdjacencies(victimx, victimy, getTile(victimx,victimy,attackercolor), getTile(attackerx,attackery,attackercolor) );
+	checkAdjacencies(victimx, victimy, getTile(victimx,victimy,attackercolor), attackercolor );
 	
-	console.log(surrounded)
+	//console.log(surrounded)
 	
 	if (surrounded){
 		
@@ -167,9 +214,7 @@ var checkContiguousAdjacencies = function(attackerx,attackery,victimx,victimy, a
 
 var checkAdjacencies = function(x,y, victimcolor, attackercolor){
 	
-	console.log("x:" + x + ", y:" + y + ", victim:" + victimcolor + ", attacker:" + attackercolor)
-	
-	if ( victimcolor == attackercolor || victimcolor == -1 ){ surrounded=false; return; }
+	if ( victimcolor == attackercolor || victimcolor == -1 || attackercolor == -1 ){ surrounded=false; return; }
 	
 	// if this tile is already a member of the Contiguous group then we just stop.
 	for (i=0; i<contiguousX.length; i++){
@@ -198,6 +243,13 @@ var getTile = function(x,y, attackercolor){
 	}else{
 		return attackercolor;
 	}
+}
+var getTile2 = function(x,y){
+	if (x >= 0 && x < board[0].length && y >= 0 && y < board.length){
+		return board[x][y];
+	}else{
+		return null;
+	}	
 }
 
 var onPlayerLeave = function(p){
