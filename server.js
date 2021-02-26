@@ -141,16 +141,16 @@ var onPlace = function(socket, x,y){
 	var placer = getPlayerFromSocket(socket);
 	board[x][y] = placer.id;
 	
+	checkContiguousAdjacencies(x,y,x,y-1,placer.id);
+	checkContiguousAdjacencies(x,y,x,y+1,placer.id);
+	checkContiguousAdjacencies(x,y,x+1,y,placer.id);
+	checkContiguousAdjacencies(x,y,x-1,y,placer.id);
+	
 	// Dede meaning the move is suicidal and should not be allowed
 	dede = true; attacker = -2; dedesCheckedX = []; dedesCheckedY = [];
 	checkIfDede(x, y, placer.id);
 	
 	if (!dede) {  } else { board[x][y] = -1; console.log("move is suicidal") };
-	
-	checkContiguousAdjacencies(x,y,x,y-1,placer.id);
-	checkContiguousAdjacencies(x,y,x,y+1,placer.id);
-	checkContiguousAdjacencies(x,y,x+1,y,placer.id);
-	checkContiguousAdjacencies(x,y,x-1,y,placer.id);
 }
 
 var checkIfDede = function(x, y, victimcolor){
