@@ -45,8 +45,6 @@ var startClient = function(){
 		});	
 	}
 	
-	server_connect();
-	
 	// main loop
 	var main = function () {
 		var now = Date.now();
@@ -74,7 +72,16 @@ var server_connect = function(){
     reconnection: false });
 	
 	socket.on("connect", function(){
-
+		
+		var form = document.getElementById("form"); // text box for joining server goes away once you join
+		form.style.display="none";;
+		
+		socket.on("disconnect", function(){
+			var form = document.getElementById("form"); // text box comes back if you're disconnected
+			form.style.display="block"
+			socket.disconnect();
+		});
+		
 	});
 	
 	socket.on("boardUpdate", function(serverBoard){
@@ -157,7 +164,8 @@ var render = function(){
 			}
 		}
 		ctx.beginPath();
-		ctx.fillStyle = "rgba(255, 255, 255, " + Math.abs(Math.sin(animtick/10)) + ")";
+		ctx.fillStyle = "#ffffff"
+		ctx.fillStyle = player.color + Math.floor( 16 + Math.floor(200 * Math.abs(Math.sin(animtick/10))) ).toString(16);
 		ctx.arc( tra_x(tilehoverX*TILE_SIZE + TILE_SIZE/2), tra_y(tilehoverY*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/2, 0, 6.28	 )
 		ctx.fill()
 		
