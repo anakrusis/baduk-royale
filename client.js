@@ -96,6 +96,11 @@ var server_connect = function(){
 			socket.emit("playerAddSocket", player.id, socket.id)
 		}
 	});
+	
+	socket.on("playerLeave", function(ind, playersList){
+		
+		players = playersList
+	});
 }
 
 var mousemove = function(e){
@@ -134,7 +139,18 @@ var render = function(){
 			for (j=0;j<board[i].length;j++){
 					
 				if (board[i][j] != -1){
-					ctx.drawImage(IMG_PIECE, tra_x(i*TILE_SIZE), tra_y(j*TILE_SIZE));
+					
+					if (players[board[i][j]]){
+					
+						ctx.beginPath();
+						ctx.fillStyle = players[board[i][j]].color;
+						ctx.arc( tra_x(i*TILE_SIZE + TILE_SIZE/2), tra_y(j*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/2, 0, 6.28	 )
+						ctx.fill()
+
+						ctx.strokeStyle = "#000000"
+						ctx.arc( tra_x(i*TILE_SIZE + TILE_SIZE/2), tra_y(j*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/2, 0, 6.28	 )
+						ctx.stroke();
+					}
 				} else{
 					
 				}

@@ -10,7 +10,7 @@ const rl = readline.createInterface({
 class Player {
 	constructor(id){
 		this.id = id;
-		this.color = [1, 1, 1];
+		this.color = "#000000";
 		this.movetimer = 0;
 	}
 }
@@ -27,9 +27,12 @@ var init_board = function(width, height){
 	}
 }
 
+var COLORS = [ "#000000", "#ffffff", "#ff0000", "#008000", "#0000ff", "#ffff00" ]
+
 console.log("Starting server...\n") // init server
 
 var players = {};
+var playerscounter = 0;
 
 init_board(19, 19);
 
@@ -78,6 +81,14 @@ var update = function () {
 io.on('connection', function (socket) {
 	
 	var playerJoining = new Player( newID() );
+	
+	if (playerscounter >= COLORS.length){
+		playerJoining.color = "#" + Math.floor(Math.random()*16777215).toString(16);
+	}else{
+		playerJoining.color = COLORS[ playerscounter ];
+	}
+	playerscounter++;
+	
 	players[playerJoining.id] = playerJoining;
 	
 	io.emit("playerJoin", playerJoining, players, board);
@@ -88,11 +99,15 @@ io.on('connection', function (socket) {
 	});
 	
 	socket.on("placeStoneRequest", function(x, y){
+		// bounds check
+		if (x >= 0 && x < board[0].length && y >= 0 && y < board.length){
 		
-		var placer = getPlayerFromSocket(socket);
-		board[x][y] = placer.id;
+			var placer = getPlayerFromSocket(socket);
+			board[x][y] = placer.id;
+			
+			io.emit("boardUpdate", board);
 		
-		io.emit("boardUpdate", board);
+		}
 	});
 	
 	socket.on("disconnect", function () {
@@ -121,6 +136,19 @@ var getPlayerFromSocket = function(socket_in){
 	return -1;
 }
 var onPlayerLeave = function(p){
+	
+	for (i=0; i<board.length; i++){
+		for (j=0; j<board[i].length; j++){
+	
+			if (board[i][j] == p.id){
+
+				board[i][j] = -1;
+			
+			}
+		}
+	}
+	io.emit("boardUpdate", board);
+	
 	var ind = p.id;
 	console.log( p.name + " has left the server (ID: " + ind + ")")
 	delete players[p.id];
