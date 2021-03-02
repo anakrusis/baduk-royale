@@ -109,7 +109,10 @@ var server_connect = function(){
 	if (socket){
 		socket.disconnect();
 	}
-	socket = io.connect("http://localhost:23456", {
+	my_nama = document.getElementById("nameField").value;
+	var ip = document.getElementById("ipField").value;
+	
+	socket = io.connect(ip, {
 	//socket = io.connect("http://5.183.8.45:23456", {
     reconnection: false });
 	
@@ -149,7 +152,8 @@ var server_connect = function(){
 			cam_y = (serverBoard.length * TILE_SIZE)/2;
 			
 			player.socket = socket.id
-			socket.emit("playerAddSocket", player.id, socket.id)
+			player.name   = my_nama
+			socket.emit("playerAddSocketAndName", player.id, socket.id, my_nama)
 		}
 	});
 	

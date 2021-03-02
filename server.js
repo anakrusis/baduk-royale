@@ -99,15 +99,18 @@ io.on('connection', function (socket) {
 	
 	playerorder.push(playerJoining.id);
 	
-	if (Object.keys(players).length == 1){
-		onNextTurn();
-	}
-	
 	io.emit("playerJoin", playerJoining, players, board);
-	console.log(playerJoining.name + " has joined the server (ID: " + playerJoining.id + ")" )
 	
-	socket.on("playerAddSocket", function (playerid, socketid) {
+	socket.on("playerAddSocketAndName", function (playerid, socketid, nama) {
 		players[playerid].socket = socketid;
+		players[playerid].name   = nama;
+		
+		console.log(playerJoining.name + " has joined the server (ID: " + playerJoining.id + ")" )
+		io.emit("playerJoin", playerJoining, players, board);
+		
+		if (Object.keys(players).length == 1){
+			onNextTurn();
+		}
 	});
 	
 	socket.on("placeStoneRequest", function(x, y){
@@ -156,7 +159,7 @@ var onPlace = function(socket, x,y){
 	currentplayerid = playerorder[playerorderindex];
 	
 	// COMMENT OUT THIS ONE LINE IF YOU WANT TO TEST WITHOUT TURNS
-	//if (placer.id != currentplayerid){ return; }
+	if (placer.id != currentplayerid){ return; }
 	
 	board[x][y] = placer.id;
 	
