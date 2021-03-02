@@ -69,6 +69,7 @@ var server_connect = function(){
 		socket.disconnect();
 	}
 	socket = io.connect("http://localhost:23456", {
+	//socket = io.connect("http://5.183.8.45:23456", {
     reconnection: false });
 	
 	socket.on("connect", function(){
@@ -116,7 +117,7 @@ var mousemove = function(e){
 }
 
 var mousedown = function(e){
-	
+	event.preventDefault();
 }
 
 var update = function(){

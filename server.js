@@ -9,9 +9,11 @@ const rl = readline.createInterface({
 
 class Player {
 	constructor(id){
+		this.name="player";
 		this.id = id;
 		this.color = "#000000";
 		this.movetimer = 0;
+		this.active = true;
 	}
 }
 
@@ -32,6 +34,10 @@ var COLORS = [ "#000000", "#ffffff", "#ff0000", "#008000", "#0000ff", "#ffff00" 
 console.log("Starting server...\n") // init server
 
 var players = {};
+
+var playerorder = [];
+var playerorderindex = 0; // index into playerorder
+
 var playerscounter = 0;
 
 init_board(19, 19);
@@ -91,6 +97,12 @@ io.on('connection', function (socket) {
 	
 	players[playerJoining.id] = playerJoining;
 	
+	playerorder.push(playerJoining.id);
+	
+	if (Object.keys(players).length == 1){
+		onNextTurn();
+	}
+	
 	io.emit("playerJoin", playerJoining, players, board);
 	console.log(playerJoining.name + " has joined the server (ID: " + playerJoining.id + ")" )
 	
@@ -107,6 +119,8 @@ io.on('connection', function (socket) {
 				onPlace(socket, x,y);
 				
 				io.emit("boardUpdate", board);
+				
+				
 			}
 		}
 	});
@@ -139,6 +153,10 @@ var getPlayerFromSocket = function(socket_in){
 
 var onPlace = function(socket, x,y){
 	var placer = getPlayerFromSocket(socket);
+	currentplayerid = playerorder[playerorderindex];
+	
+	if (placer.id != currentplayerid){ return; }
+	
 	board[x][y] = placer.id;
 	
 	checkContiguousAdjacencies(x,y,x,y-1,placer.id);
@@ -150,17 +168,17 @@ var onPlace = function(socket, x,y){
 	dede = true; attacker = -2; dedesCheckedX = []; dedesCheckedY = [];
 	checkIfDede(x, y, placer.id);
 	
-	if (!dede) {  } else { board[x][y] = -1; console.log("move is suicidal") };
+	if (!dede) { onNextTurn(); } else { board[x][y] = -1; console.log("move is suicidal") };
 }
 
 var checkIfDede = function(x, y, victimcolor){
 
-	console.log("x:" + x + ", y:" + y + ", victim:" + victimcolor + ", attacker:" + attacker)
+	//console.log("x:" + x + ", y:" + y + ", victim:" + victimcolor + ", attacker:" + attacker)
 
 	// if this tile is already a member of the Dedes Checked group then we just stop.
 	for (i=0; i<dedesCheckedX.length; i++){
 		if (dedesCheckedX[i] == x && dedesCheckedY[i] == y){
-			console.log("tile already checked")
+			//console.log("tile already checked")
 			return;
 		}
 	}
@@ -252,7 +270,30 @@ var getTile2 = function(x,y){
 	}	
 }
 
+var onNextTurn = function(){
+	
+	for (i=1;i<playerorder.length+1;i++){
+		nextindex = (playerorderindex + i) % playerorder.length;
+
+		tempid = playerorder[nextindex];
+		if (players[tempid]){
+			break;
+		}
+	}
+	playerorderindex = nextindex;
+	console.log(playerorderindex);
+
+	currentplayerid = playerorder[playerorderindex];
+	
+	console.log( players[currentplayerid].name + "'s turn! (ID: " + players[currentplayerid].id + ")" );
+}
+
 var onPlayerLeave = function(p){
+	
+	currentplayerid = playerorder[playerorderindex];
+	if (p.id == currentplayerid){
+		onNextTurn();
+	}
 	
 	for (i=0; i<board.length; i++){
 		for (j=0; j<board[i].length; j++){
