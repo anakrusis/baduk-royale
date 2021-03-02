@@ -6,16 +6,51 @@ var ctx;
 var player;
 var players;
 var board;
+var currentplayerid; // just cosmetic, used for the text drawing
+var textfadetimer;
 
 var mouseX,mouseY,mouseDown=0;
+var middleclickdown = false;
+
 var tilehoverX; var tilehoverY;
 var animtick = 0;
 
 TILE_SIZE = 32;
-
-IMG_PIECE = new Image(); IMG_PIECE.src = "piece.png";
+TEXT_FADE_TIME = 60;
 
 var cam_x = 0; var cam_y = 0; var cam_zoom = 1;
+
+var mousemove = function(e){
+	newmousepos = getMousePos(e);
+	newx = newmousepos[0]; newy = newmousepos[1];
+	
+	dx = newx - mouseX;
+	dy = newy - mouseY;
+	
+	if (middleclickdown){
+		cam_x -= dx;
+		cam_y -= dy;
+	}
+	
+	mouseX = newx; mouseY = newy;
+	//console.log(mouseX + " " + mouseY);
+	
+	tilehoverX = Math.floor((untra_x(mouseX)) / TILE_SIZE); tilehoverY = Math.floor((untra_y(mouseY) )/ TILE_SIZE);
+}
+
+var mousedown = function(e){
+	event.preventDefault();
+	
+	if (e.button == 1){
+		middleclickdown = true;
+	}
+}
+
+var mouseup = function(e){
+	if (e.button == 1){
+		middleclickdown = false;
+	}
+}
 
 var startClient = function(){
 	canvas = document.getElementById("Canvas");
@@ -33,15 +68,21 @@ var startClient = function(){
 		// React to mouse events on the canvas, and mouseup on the entire document
 		canvas.addEventListener('mousedown', mousedown, false);
 		canvas.addEventListener('mousemove', mousemove, false);
-		//window.addEventListener('mouseup',   mouseup, false);
+		window.addEventListener('mouseup',   mouseup, false);
 
 		// React to touch events on the canvas
 		//canvas.addEventListener('touchstart', touchstart, false);
 		//canvas.addEventListener('touchmove', touchmove, false);
 		canvas.addEventListener('click', function (e) {
 			
-			socket.emit("placeStoneRequest", tilehoverX, tilehoverY);
-			
+			// left click (place stone)
+			if (e.button == 0){
+				socket.emit("placeStoneRequest", tilehoverX, tilehoverY);
+				
+			// middle click (Drag viewport)
+			}else if (e.button == 1){
+				
+			}
 		});	
 	}
 	
@@ -89,6 +130,13 @@ var server_connect = function(){
 		board = serverBoard;
 	});
 	
+	socket.on("nextTurn", function(playerid){
+		
+		currentplayerid = playerid;
+		textfadetimer = TEXT_FADE_TIME;
+		
+	});
+	
 	socket.on("playerJoin", function(playerJoining, serverPlayerList, serverBoard){
 		
 		players = serverPlayerList;
@@ -111,22 +159,17 @@ var server_connect = function(){
 	});
 }
 
-var mousemove = function(e){
-	getMousePos(e);
-	tilehoverX = Math.floor((untra_x(mouseX)) / TILE_SIZE); tilehoverY = Math.floor((untra_y(mouseY) )/ TILE_SIZE);
-}
-
-var mousedown = function(e){
-	event.preventDefault();
-}
-
 var update = function(){
 	animtick++;
+	textfadetimer--;
+	textfadetimer = Math.max(0, textfadetimer);
 }
 
 var render = function(){
+	ctx.textAlign = "left";
 	ctx.fillStyle = "rgb(230, 170, 100)"; // blank color for the canvas
 	ctx.fillRect(0,0,canvas.width,canvas.height);
+	ctx.lineWidth = 1;
 	
 	if (typeof board !== 'undefined'){
 		
@@ -184,6 +227,17 @@ var render = function(){
 		
 		texty += 32
 	}
+	if (textfadetimer > 0 && players[currentplayerid]){
+		ctx.fillStyle = players[currentplayerid].color + Math.floor(16 + textfadetimer/TEXT_FADE_TIME * 240 ).toString(16);
+		ctx.font = "bold 60px Verdana";
+		ctx.textAlign = "center";
+		
+		outStr = players[currentplayerid].name + "'s turn!"
+		
+		ctx.fillText(outStr, canvas.width / 2, canvas.height / 2);
+		ctx.fillStyle = "rgba(0, 0, 0, " + textfadetimer/TEXT_FADE_TIME + ")";
+		ctx.strokeText(outStr, canvas.width / 2, canvas.height / 2);
+	}
 }
 
 var tra_x = function(x){ // translate x based on camera values
@@ -208,8 +262,11 @@ var untra_y = function(y){
 function getMousePos(e) {
 	
 	rect = canvas.getBoundingClientRect()
-	mouseX = e.clientX - rect.left
-	mouseY = e.clientY - rect.top
+	var x = e.clientX - rect.left
+	var y = e.clientY - rect.top
+	
+	output = [];
+	output.push(x); output.push(y); return output;
 	
 /* 	if (!e)
 	 var e = event;

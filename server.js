@@ -40,7 +40,7 @@ var playerorderindex = 0; // index into playerorder
 
 var playerscounter = 0;
 
-init_board(19, 19);
+init_board(50, 50);
 
 rl.on('line', (line) => { // Command line parsing!
 	firstArg = line.trim().split(' ')[0]
@@ -155,7 +155,8 @@ var onPlace = function(socket, x,y){
 	var placer = getPlayerFromSocket(socket);
 	currentplayerid = playerorder[playerorderindex];
 	
-	if (placer.id != currentplayerid){ return; }
+	// COMMENT OUT THIS ONE LINE IF YOU WANT TO TEST WITHOUT TURNS
+	//if (placer.id != currentplayerid){ return; }
 	
 	board[x][y] = placer.id;
 	
@@ -199,10 +200,15 @@ var checkIfDede = function(x, y, victimcolor){
 		attacker = getTile2(x,y-1);
 	}
 	
-	if ( (getTile2(x+1,y) != attacker && attacker != -2) && getTile2(x+1,y) != victimcolor && getTile2(x+1,y) != null ) { dede=false; return; }
-	if ( (getTile2(x-1,y) != attacker && attacker != -2) && getTile2(x-1,y) != victimcolor && getTile2(x-1,y) != null) { dede=false; return; }
-	if ( (getTile2(x,y+1) != attacker && attacker != -2) && getTile2(x,y+1) != victimcolor && getTile2(x,y+1) != null) { dede=false; return; }
-	if ( (getTile2(x,y-1) != attacker && attacker != -2) && getTile2(x,y-1) != victimcolor && getTile2(x,y-1) != null) { dede=false; return; }
+	//if ( (getTile2(x+1,y) != attacker && attacker != -2) && getTile2(x+1,y) != victimcolor && getTile2(x+1,y) != null ) { dede=false; return; }
+	//if ( (getTile2(x-1,y) != attacker && attacker != -2) && getTile2(x-1,y) != victimcolor && getTile2(x-1,y) != null) { dede=false; return; }
+	//if ( (getTile2(x,y+1) != attacker && attacker != -2) && getTile2(x,y+1) != victimcolor && getTile2(x,y+1) != null) { dede=false; return; }
+	//if ( (getTile2(x,y-1) != attacker && attacker != -2) && getTile2(x,y-1) != victimcolor && getTile2(x,y-1) != null) { dede=false; return; }
+	
+	if ( (getTile2(x+1,y) == -1) ) { dede=false; return; }
+	if ( (getTile2(x-1,y) == -1) ) { dede=false; return; }
+	if ( (getTile2(x,y+1) == -1) ) { dede=false; return; }
+	if ( (getTile2(x,y-1) == -1) ) { dede=false; return; }
 	
 	dedesCheckedX.push(x); dedesCheckedY.push(y);
 	
@@ -242,10 +248,10 @@ var checkAdjacencies = function(x,y, victimcolor, attackercolor){
 	}
 
 	if ( getTile(x,y,attackercolor) == attackercolor ){ return; }
-	if ( getTile(x,y+1,attackercolor) != attackercolor && getTile(x,y+1,attackercolor) != victimcolor ){ surrounded=false; return; }
-	if ( getTile(x,y-1,attackercolor) != attackercolor && getTile(x,y-1,attackercolor) != victimcolor ){ surrounded=false; return; }
-	if ( getTile(x+1,y,attackercolor) != attackercolor && getTile(x+1,y,attackercolor) != victimcolor ){ surrounded=false; return; }
-	if ( getTile(x-1,y,attackercolor) != attackercolor && getTile(x-1,y,attackercolor) != victimcolor ){ surrounded=false; return; }
+	if ( getTile(x,y+1,attackercolor) == -1 ){ surrounded=false; return; }
+	if ( getTile(x,y-1,attackercolor) == -1 ){ surrounded=false; return; }
+	if ( getTile(x+1,y,attackercolor) == -1 ){ surrounded=false; return; }
+	if ( getTile(x-1,y,attackercolor) == -1 ){ surrounded=false; return; }
 	
 	contiguousX.push(x); contiguousY.push(y);
 	
@@ -286,6 +292,8 @@ var onNextTurn = function(){
 	currentplayerid = playerorder[playerorderindex];
 	
 	console.log( players[currentplayerid].name + "'s turn! (ID: " + players[currentplayerid].id + ")" );
+	
+	io.emit("nextTurn", currentplayerid);
 }
 
 var onPlayerLeave = function(p){
