@@ -127,14 +127,18 @@ io.on('connection', function (socket) {
 	
 	playerorder.push(playerJoining.id);
 	
-	io.emit("playerJoin", playerJoining, players, board);
+	if (Object.keys(players).length == 1){
+		currentplayerid = playerJoining.id;
+	}
+	
+	io.emit("playerJoin", playerJoining, players, board, currentplayerid);
 	
 	socket.on("playerAddSocketAndName", function (playerid, socketid, nama) {
 		players[playerid].socket = socketid;
 		players[playerid].name   = nama;
 		
 		console.log(playerJoining.name + " has joined the server (ID: " + playerJoining.id + ")" )
-		io.emit("playerJoin", playerJoining, players, board);
+		io.emit("playerJoin", playerJoining, players, board, currentplayerid);
 		
 		if (Object.keys(players).length == 1){
 			onNextTurn();

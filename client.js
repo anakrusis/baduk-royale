@@ -89,6 +89,18 @@ var startClient = function(){
 			
 			// left click (place stone)
 			if (e.button == 0){
+				
+				for (i = 0; i < screen.elements.length; i++){
+		
+					btn = screen.elements[i];
+					if ( btn.x <= mouseX && mouseX <= btn.x + btn.width && 
+						 btn.y <= mouseY && mouseY <= btn.y + btn.height ){
+
+						btn.onClick();
+						return;
+					}				
+				}
+				
 				socket.emit("placeStoneRequest", tilehoverX, tilehoverY);
 				
 			// middle click (Drag viewport)
@@ -97,6 +109,8 @@ var startClient = function(){
 			}
 		});	
 	}
+	initGUI();
+	screen = screen_MAIN;
 	
 	// main loop
 	var main = function () {
@@ -153,9 +167,10 @@ var server_connect = function(){
 		
 	});
 	
-	socket.on("playerJoin", function(playerJoining, serverPlayerList, serverBoard){
+	socket.on("playerJoin", function(playerJoining, serverPlayerList, serverBoard, serverplayerid){
 		
 		players = serverPlayerList;
+		currentplayerid = serverplayerid;
 		
 		if (typeof player === 'undefined'){
 			player = playerJoining;
@@ -194,6 +209,10 @@ var update = function(){
 	animtick++;
 	textfadetimer--;
 	textfadetimer = Math.max(0, textfadetimer);
+	
+	for (i = 0; i < screen.elements.length; i++){
+		screen.elements[i].update();
+	}
 }
 
 var render = function(){
@@ -246,24 +265,54 @@ var render = function(){
 		}
 		ctx.beginPath();
 		ctx.fillStyle = "#ffffff"
-		ctx.fillStyle = player.color + Math.floor( 16 + Math.floor(200 * Math.abs(Math.sin(animtick/10))) ).toString(16);
-		ctx.arc( tra_x(tilehoverX*TILE_SIZE + TILE_SIZE/2), tra_y(tilehoverY*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/2, 0, 6.28	 )
-		ctx.fill()
-		
+		if (currentplayerid == player.id){
+			ctx.fillStyle = player.color + Math.floor( 16 + Math.floor(200 * Math.abs(Math.sin(animtick/10))) ).toString(16);
+			ctx.arc( tra_x(tilehoverX*TILE_SIZE + TILE_SIZE/2), tra_y(tilehoverY*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/2, 0, 6.28	 )
+			ctx.fill()
+		}
 		ctx.strokeStyle = "#000000"
 		ctx.arc( tra_x(tilehoverX*TILE_SIZE + TILE_SIZE/2), tra_y(tilehoverY*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/2, 0, 6.28	 )
 		ctx.stroke();
 		//ctx.drawImage(IMG_PIECE, tra_x(tilehoverX*TILE_SIZE), tra_y(tilehoverY*TILE_SIZE));
 	}
-	var texty = 16
+	// buttons and stuff
+	
 	ctx.fillStyle = "rgb(255, 255, 255)";
-	ctx.font = "16px Helvetica";
-	for (index in players){
-		
-		ctx.fillText ( players[index].name + " (ID: " + players[index].id + ")", 0, texty )
-		
-		texty += 32
+	ctx.font = "bold 20px Courier New";
+	for (i = 0; i < screen.elements.length; i++){
+		btn = screen.elements[i];
+
+		if (btn.visible){
+			ctx.fillStyle = btn.color;
+			ctx.fillRect(btn.x, btn.y, btn.width, btn.height);
+			for (s = 0; s < btn.text.length; s++){
+				var txt = btn.text[s];
+				ctx.fillStyle = "#eeffff";
+				ctx.fillText(txt, btn.x+8, btn.y+40+(s*32));
+			}
+			
+			ctx.fillStyle = "#ffeeff";
+			ctx.strokeRect(btn.x, btn.y, btn.width, btn.height);
+		}
 	}
+	var count = 0;
+	for (index in players){
+		ctx.beginPath();
+		if (players[index].id == currentplayerid){
+			ctx.fillStyle = players[index].color + Math.floor( 16 + Math.floor(200 * Math.abs(Math.sin(animtick/10))) ).toString(16);
+		}else{
+			ctx.fillStyle = players[index].color;
+		}
+		
+		ctx.arc( 56, 64+(count*32), 10, 0, 6.28);
+		ctx.fill()
+		
+		//ctx.strokeStyle = "#000000"
+		//ctx.arc( tra_x( 16, 16+(count*16), 10, 0, 6.28);
+		//ctx.stroke();
+		count++;
+	}
+	
 	if (textfadetimer > 0 && players[currentplayerid]){
 		ctx.fillStyle = players[currentplayerid].color + Math.floor(16 + textfadetimer/TEXT_FADE_TIME * 240 ).toString(16);
 		ctx.font = "bold 60px Verdana";
@@ -304,18 +353,54 @@ function getMousePos(e) {
 	
 	output = [];
 	output.push(x); output.push(y); return output;
-	
-/* 	if (!e)
-	 var e = event;
+}
 
-	if (e.offsetX) {
-		mouseX = e.offsetX;
-		mouseY = e.offsetY;
+class TextBox {
+	constructor ( x, y, text, width, height ){
+		this.x = x;
+		this.y = y;
+		if (width) { this.width = width } else { this.width = 512 };
+		if (height) { this.height = height } else { this.height = 64 };
+		this.text = text;
+		this.color = "#11001155";
+		this.visible = true;
 	}
-	else if (e.layerX) {
-		mouseX = e.layerX;
-		mouseY = e.layerY;
-	} */
+
+	onClick(){
+	
+	}
+	update(){
+
+	}
+}
+var initGUI = function(){
+	screen_MAIN = {
+		elements: []
+	}
+	b = new TextBox(32, 32, [], 320, 512);
+	
+	b.update = function(){
+		
+		this.visible = (canvas.width > 500);
+		
+		this.text = [];
+		
+		this.height = 0;
+		var count = 0;
+		for (index in players){
+			this.text[count] = "   " + players[index].name + "(ID: " + players[index].id + ")";
+			this.height += 45;
+			
+			if (player.id == players[index].id){
+				this.text[count]+="(You)";
+			}
+			
+			count++;
+		}
+	
+	}
+	
+	screen_MAIN.elements.push(b);
 }
 
 startClient();
