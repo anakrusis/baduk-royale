@@ -11,12 +11,14 @@ var textfadetimer;
 
 var mouseX,mouseY,mouseDown=0;
 var middleclickdown = false;
+var keysDown = {};
 
 var tilehoverX; var tilehoverY;
 var animtick = 0;
 
 TILE_SIZE = 32;
 TEXT_FADE_TIME = 60;
+CAM_MOV_SPEED = 5;
 
 var cam_x = 0; var cam_y = 0; var cam_zoom = 1;
 
@@ -61,6 +63,16 @@ var startClient = function(){
 	ctx = canvas.getContext("2d");
 	ctx.imageSmoothingEnabled = false;
 	ctx.mozImageSmoothingEnabled = false;
+	
+	addEventListener("keydown", function (e) { // when a key is pressed
+		keysDown[e.keyCode] = true;
+		event.preventDefault();
+		tilehoverX = Math.floor((untra_x(mouseX)) / TILE_SIZE); tilehoverY = Math.floor((untra_y(mouseY) )/ TILE_SIZE);
+	}, false);
+
+	addEventListener("keyup", function (e) { // when a key is unpressed
+		delete keysDown[e.keyCode];
+	}, false);
 	
 	// TODO make use of these functions (very soon)
 	
@@ -165,6 +177,20 @@ var server_connect = function(){
 }
 
 var update = function(){
+	
+	if (87 in keysDown || 38 in keysDown) { // up
+		cam_y-=CAM_MOV_SPEED;
+	}
+	if (83 in keysDown || 40 in keysDown) { // down
+		cam_y+=CAM_MOV_SPEED;
+	}
+	if (65 in keysDown || 37 in keysDown) { // left
+		cam_x-=CAM_MOV_SPEED;
+	}
+	if (68 in keysDown || 39 in keysDown) { // right
+		cam_x+=CAM_MOV_SPEED;
+	}
+	
 	animtick++;
 	textfadetimer--;
 	textfadetimer = Math.max(0, textfadetimer);
