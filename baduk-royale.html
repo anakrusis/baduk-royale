@@ -16,16 +16,21 @@
 			Name:
 			<input type="text" id="nameField" name="name" value="Player" minlength="1" maxlength="16">
 			IP:
-			<input type="text" id="ipField" name="ip" value="http://5.183.8.45:23456">
+			<!--<input type="text" id="ipField" name="ip" value="https://games.sinecraft.net"> !-->
+			<input type="text" id="ipField" name="ip" value="http://localhost:23456">
 			<input type="button" onclick="server_connect()" value="Connect">
 		</form>
-	</div>
-	<div class="bodydiv">
 		
-		<canvas id="Canvas" style="width:100%" width="1000" height="600" ></canvas>
-				
+		
 	</div>
+	<div class="bodydiv" id="bodydiv">
 
+		<canvas id="Canvas"></canvas>
+			
+	</div>
+	<div class="bodydiv2" id="bodydiv2">
+		thank u aji
+	</div>
 	
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
 	<script src = "./client.js"></script>

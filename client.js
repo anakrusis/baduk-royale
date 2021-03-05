@@ -56,7 +56,7 @@ var startClient = function(){
 	canvas = document.getElementById("Canvas");
 	//canvas.style = "position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; margin: auto;"
 	
-	canvas.style = "margin:auto;"
+	//canvas.style = "margin:auto;"
 	
 	ctx = canvas.getContext("2d");
 	ctx.imageSmoothingEnabled = false;
@@ -113,7 +113,6 @@ var server_connect = function(){
 	var ip = document.getElementById("ipField").value;
 	
 	socket = io.connect(ip, {
-	//socket = io.connect("http://5.183.8.45:23456", {
     reconnection: false });
 	
 	socket.on("connect", function(){
@@ -125,6 +124,8 @@ var server_connect = function(){
 			var form = document.getElementById("form"); // text box comes back if you're disconnected
 			form.style.display="block"
 			socket.disconnect();
+			
+			player = undefined;
 		});
 		
 	});
@@ -170,12 +171,18 @@ var update = function(){
 }
 
 var render = function(){
+	
+	bodydiv = document.getElementById("bodydiv");
+	canvas.width = bodydiv.offsetWidth - 30;
+	canvas.height = canvas.width * (9/16)
+	//canvas.height = bodydiv.offsetHeight;
+	
 	ctx.textAlign = "left";
 	ctx.fillStyle = "rgb(230, 170, 100)"; // blank color for the canvas
 	ctx.fillRect(0,0,canvas.width,canvas.height);
 	ctx.lineWidth = 1;
 	
-	if (typeof board !== 'undefined'){
+	if (typeof board !== 'undefined' && typeof player !== 'undefined'){
 		
 		ctx.strokeStyle = "rgb(0, 0, 0)";
 		for (i=0;i<board.length-1;i++){

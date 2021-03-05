@@ -77,6 +77,34 @@ rl.on('line', (line) => { // Command line parsing!
 			}
 			console.log("");
 			break;
+			
+		case "/kick":
+			arg = line.trim().substring(6);
+			if (parseInt(arg, 10) != NaN){
+				id = parseInt(arg, 10);
+				if ( players[id] ){
+					
+					const sockete = io.of("/").connected[ players[id].socket ];
+					
+					onPlayerLeave(players[id]);
+					
+					io.emit("playerLeave", id, players);
+					
+					if (sockete){
+						sockete.disconnect();
+					}
+				
+				}else{
+					console.log("Invalid player ID!\n");
+				}
+			}else{
+				console.log("Invalid player ID: not an integer!\n");
+			}
+			break;
+			
+		case "/next":
+			onNextTurn();
+			break;
 	}
 });
 
@@ -290,7 +318,7 @@ var onNextTurn = function(){
 		}
 	}
 	playerorderindex = nextindex;
-	console.log(playerorderindex);
+	//console.log(playerorderindex);
 
 	currentplayerid = playerorder[playerorderindex];
 	
