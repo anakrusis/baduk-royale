@@ -7,8 +7,9 @@ var player;
 var players;
 var board;
 var currentplayerid; // just cosmetic, used for the text drawing
-var messagebuffer;   // text string for doing stuff
+var messagebuffer = "";   // text string for doing stuff
 var textfadetimer;
+var textsize = 50; var textcolor = "#ffffff";
 
 var mouseX,mouseY,mouseDown=0;
 var middleclickdown = false;
@@ -145,6 +146,8 @@ var server_connect = function(){
 	
 	socket.on("connect", function(){
 		
+		messagebuffer = "";
+		
 		var form = document.getElementById("form"); // text box for joining server goes away once you join
 		form.style.display="none";;
 		
@@ -156,6 +159,13 @@ var server_connect = function(){
 			player = undefined;
 		});
 		
+	});
+	
+	socket.on("textMessage", function(serverText, serverTextDuration, serverTextSize, serverTextColor){
+		messagebuffer = serverText;
+		textfadetimer = serverTextDuration;
+		textsize      = serverTextSize;
+		textcolor     = serverTextColor;
 	});
 	
 	socket.on("boardUpdate", function(serverBoard){
@@ -173,7 +183,7 @@ var server_connect = function(){
 	});
 	
 	socket.on("playerJoin", function(playerJoining, serverPlayerList, serverBoard, serverplayerid){
-		
+		messagebuffer = "";
 		players = serverPlayerList;
 		currentplayerid = serverplayerid;
 		
@@ -209,6 +219,12 @@ var update = function(){
 	}
 	if (68 in keysDown || 39 in keysDown) { // right
 		cam_x+=CAM_MOV_SPEED;
+	}
+	
+	if (players){
+		if (Object.keys(players).length == 1){
+			messagebuffer = "Waiting for another player to join..."; textsize = 30; textcolor = "#ffffff"; textfadetimer = 10000;
+		}
 	}
 	
 	animtick++;
@@ -313,12 +329,12 @@ var render = function(){
 		count++;
 	}
 	
-	if (textfadetimer > 0 && players[currentplayerid]){
-		ctx.fillStyle = players[currentplayerid].color + Math.floor(16 + textfadetimer/TEXT_FADE_TIME * 240 ).toString(16);
-		ctx.font = "bold 50px Verdana";
+	if (textfadetimer > 0){
+		ctx.fillStyle = textcolor + Math.min(255, Math.floor(16 + textfadetimer/TEXT_FADE_TIME * 240 )).toString(16);
+		ctx.font = "bold " + textsize + "px Verdana";
 		ctx.textAlign = "center";
 		
-		outStr = players[currentplayerid].name + "'s turn!"
+		outStr = messagebuffer //players[currentplayerid].name + "'s turn!"
 		
 		ctx.fillText(outStr, canvas.width / 2, canvas.height / 2);
 		ctx.fillStyle = "rgba(0, 0, 0, " + textfadetimer/TEXT_FADE_TIME + ")";

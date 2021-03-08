@@ -116,7 +116,7 @@ var onKick = function(id){
 }
 
 var update = function () {
-	if (Object.keys(players).length != 0){
+	if (Object.keys(players).length > 1){
 		movetimer--;
 		io.emit("timerUpdate", movetimer);
 		
@@ -165,16 +165,19 @@ io.on('connection', function (socket) {
 	});
 	
 	socket.on("placeStoneRequest", function(x, y){
-		// bounds check
-		if (x >= 0 && x < board.length && y >= 0 && y < board[0].length){
-			
-			if (board[x][y] == -1){
+		// player amount check
+		if (Object.keys(players).length > 1){
+			// bounds check
+			if (x >= 0 && x < board.length && y >= 0 && y < board[0].length){
+				// empty tile check
+				if (board[x][y] == -1){
+						
+					onPlace(socket, x,y);
 					
-				onPlace(socket, x,y);
-				
-				io.emit("boardUpdate", board);
-				
-				
+					io.emit("boardUpdate", board);
+					
+					
+				}
 			}
 		}
 	});
@@ -254,11 +257,6 @@ var checkIfDede = function(x, y, victimcolor){
 		attacker = getTile2(x,y-1);
 	}
 	
-	//if ( (getTile2(x+1,y) != attacker && attacker != -2) && getTile2(x+1,y) != victimcolor && getTile2(x+1,y) != null ) { dede=false; return; }
-	//if ( (getTile2(x-1,y) != attacker && attacker != -2) && getTile2(x-1,y) != victimcolor && getTile2(x-1,y) != null) { dede=false; return; }
-	//if ( (getTile2(x,y+1) != attacker && attacker != -2) && getTile2(x,y+1) != victimcolor && getTile2(x,y+1) != null) { dede=false; return; }
-	//if ( (getTile2(x,y-1) != attacker && attacker != -2) && getTile2(x,y-1) != victimcolor && getTile2(x,y-1) != null) { dede=false; return; }
-	
 	if ( (getTile2(x+1,y) == -1) ) { dede=false; return; }
 	if ( (getTile2(x-1,y) == -1) ) { dede=false; return; }
 	if ( (getTile2(x,y+1) == -1) ) { dede=false; return; }
@@ -277,8 +275,6 @@ var checkContiguousAdjacencies = function(attackerx,attackery,victimx,victimy, a
 	
 	contiguousX = []; contiguousY = [];
 	checkAdjacencies(victimx, victimy, getTile(victimx,victimy,attackercolor), attackercolor );
-	
-	//console.log(surrounded)
 	
 	if (surrounded){
 		
@@ -300,7 +296,7 @@ var checkAdjacencies = function(x,y, victimcolor, attackercolor){
 			return;
 		}
 	}
-
+	// if any libertys on the group then the group is not surrounded!
 	if ( getTile(x,y,attackercolor) == attackercolor ){ return; }
 	if ( getTile(x,y+1,attackercolor) == -1 ){ surrounded=false; return; }
 	if ( getTile(x,y-1,attackercolor) == -1 ){ surrounded=false; return; }
@@ -350,6 +346,7 @@ var onNextTurn = function(){
 		
 		console.log( players[currentplayerid].name + "'s turn! (ID: " + players[currentplayerid].id + ")" );
 		
+		io.emit("textMessage", players[currentplayerid].name + "'s turn!", 60, 50, players[currentplayerid].color);
 		io.emit("nextTurn", currentplayerid);
 	}
 }
