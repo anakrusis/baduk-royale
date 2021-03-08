@@ -7,6 +7,7 @@ var player;
 var players;
 var board;
 var currentplayerid; // just cosmetic, used for the text drawing
+var messagebuffer;   // text string for doing stuff
 var textfadetimer;
 
 var mouseX,mouseY,mouseDown=0;
@@ -15,6 +16,7 @@ var keysDown = {};
 
 var tilehoverX; var tilehoverY;
 var animtick = 0;
+var movetimer = 0; // In ticks like the server movetimer
 
 TILE_SIZE = 32;
 TEXT_FADE_TIME = 60;
@@ -159,6 +161,9 @@ var server_connect = function(){
 	socket.on("boardUpdate", function(serverBoard){
 		board = serverBoard;
 	});
+	socket.on("timerUpdate", function(serverTimer){
+		movetimer = serverTimer;
+	});
 	
 	socket.on("nextTurn", function(playerid){
 		
@@ -220,7 +225,6 @@ var render = function(){
 	bodydiv = document.getElementById("bodydiv");
 	canvas.width = bodydiv.offsetWidth - 30;
 	canvas.height = canvas.width * (9/16)
-	//canvas.height = bodydiv.offsetHeight;
 	
 	ctx.textAlign = "left";
 	ctx.fillStyle = "rgb(230, 170, 100)"; // blank color for the canvas
@@ -273,25 +277,21 @@ var render = function(){
 		ctx.strokeStyle = "#000000"
 		ctx.arc( tra_x(tilehoverX*TILE_SIZE + TILE_SIZE/2), tra_y(tilehoverY*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/2, 0, 6.28	 )
 		ctx.stroke();
-		//ctx.drawImage(IMG_PIECE, tra_x(tilehoverX*TILE_SIZE), tra_y(tilehoverY*TILE_SIZE));
 	}
 	// buttons and stuff
 	
 	ctx.fillStyle = "rgb(255, 255, 255)";
-	ctx.font = "bold 20px Courier New";
 	for (i = 0; i < screen.elements.length; i++){
 		btn = screen.elements[i];
-
+		ctx.font = "bold " + btn.fontsize + "px Courier New";
 		if (btn.visible){
 			ctx.fillStyle = btn.color;
 			ctx.fillRect(btn.x, btn.y, btn.width, btn.height);
 			for (s = 0; s < btn.text.length; s++){
 				var txt = btn.text[s];
 				ctx.fillStyle = "#eeffff";
-				ctx.fillText(txt, btn.x+8, btn.y+40+(s*32));
+				ctx.fillText(txt, btn.x+8, btn.y+32+(s*32));
 			}
-			
-			ctx.fillStyle = "#ffeeff";
 			ctx.strokeRect(btn.x, btn.y, btn.width, btn.height);
 		}
 	}
@@ -304,7 +304,7 @@ var render = function(){
 			ctx.fillStyle = players[index].color;
 		}
 		
-		ctx.arc( 56, 64+(count*32), 10, 0, 6.28);
+		ctx.arc( 56, 56+(count*32), 10, 0, 6.28);
 		ctx.fill()
 		
 		//ctx.strokeStyle = "#000000"
@@ -315,7 +315,7 @@ var render = function(){
 	
 	if (textfadetimer > 0 && players[currentplayerid]){
 		ctx.fillStyle = players[currentplayerid].color + Math.floor(16 + textfadetimer/TEXT_FADE_TIME * 240 ).toString(16);
-		ctx.font = "bold 60px Verdana";
+		ctx.font = "bold 50px Verdana";
 		ctx.textAlign = "center";
 		
 		outStr = players[currentplayerid].name + "'s turn!"
@@ -364,6 +364,7 @@ class TextBox {
 		this.text = text;
 		this.color = "#11001155";
 		this.visible = true;
+		this.fontsize = 20;
 	}
 
 	onClick(){
@@ -377,8 +378,7 @@ var initGUI = function(){
 	screen_MAIN = {
 		elements: []
 	}
-	b = new TextBox(32, 32, [], 320, 512);
-	
+	b = new TextBox(32, 32, [], 320, 512); // list of players box
 	b.update = function(){
 		
 		this.visible = (canvas.width > 500);
@@ -389,18 +389,34 @@ var initGUI = function(){
 		var count = 0;
 		for (index in players){
 			this.text[count] = "   " + players[index].name + "(ID: " + players[index].id + ")";
-			this.height += 45;
+			this.height += 40;
 			
-			if (player.id == players[index].id){
-				this.text[count]+="(You)";
+			if (player){
+				if (player.id == players[index].id){
+					this.text[count]+="(You)";
+				}
 			}
-			
 			count++;
 		}
 	
 	}
-	
 	screen_MAIN.elements.push(b);
+	
+	t = new TextBox(32, 32, [], 128, 48); // move timer
+	t.fontsize = 35;
+	t.update = function(){
+		if (player){
+			this.visible = (canvas.width > 400 && player.id == players[currentplayerid].id);
+		}else{
+			this.visible = false;
+		}
+		this.y = canvas.height - 80
+		minutetext = Math.floor(movetimer / (60*20)).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false});
+		secondtext = Math.ceil(movetimer / (20)).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false});
+		
+		this.text[0] = minutetext + ":" + secondtext;
+	}
+	screen_MAIN.elements.push(t);
 }
 
 startClient();

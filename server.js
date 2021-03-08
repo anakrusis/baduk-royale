@@ -1,4 +1,5 @@
-var io = require('socket.io')(23456);
+var config = require('./config.js');
+var io = require('socket.io')(config.PORT);
 const readline = require('readline');
 
 const rl = readline.createInterface({
@@ -12,7 +13,7 @@ class Player {
 		this.name="player";
 		this.id = id;
 		this.color = "#000000";
-		this.movetimer = 0;
+		this.turns_until_kick = 3;
 		this.active = true;
 	}
 }
@@ -20,13 +21,14 @@ class Player {
 var init_board = function(width, height){
 	board = [];
 	
-	for (i = 0; i < height; i++){
+	for (i = 0; i < width; i++){
 		
 		board[i] = [];
-		for (j = 0; j < width; j++){
+		for (j = 0; j < height; j++){
 			board[i][j] = -1;
 		}
 	}
+	io.emit("boardUpdate", board);
 }
 
 var COLORS = [ "#000000", "#ffffff", "#ff0000", "#008000", "#0000ff", "#ffff00" ]
@@ -39,21 +41,25 @@ var playerorder = [];
 var playerorderindex = 0; // index into playerorder
 
 var playerscounter = 0;
+var movetimer = config.TICKS_PER_SECOND * config.TURN_TIME_IN_SECONDS;
 
-init_board(50, 50);
+init_board(config.BOARD_WIDTH, config.BOARD_HEIGHT);
 
 rl.on('line', (line) => { // Command line parsing!
 	firstArg = line.trim().split(' ')[0]
 	switch (firstArg) {
 		
 		case "/list":
-			for (index in players){
-				console.log ( players[index].name + " (ID: " + players[index].id + ")" )
-			}
 			if (Object.keys(players).length == 0){
 				console.log("No players online!")
+			}else{
+				console.log("Players online:");
 			}
-			console.log("");
+			for (index in players){
+				console.log ( players[index].name + " (ID: " + players[index].id + ")" );
+			}
+			
+			console.log("Move timer(ticks): " + movetimer);console.log("");
 			break;
 			
 		case "/stop":
@@ -84,16 +90,8 @@ rl.on('line', (line) => { // Command line parsing!
 				id = parseInt(arg, 10);
 				if ( players[id] ){
 					
-					const sockete = io.of("/").connected[ players[id].socket ];
+					onKick(id);
 					
-					onPlayerLeave(players[id]);
-					
-					io.emit("playerLeave", id, players);
-					
-					if (sockete){
-						sockete.disconnect();
-					}
-				
 				}else{
 					console.log("Invalid player ID!\n");
 				}
@@ -108,8 +106,28 @@ rl.on('line', (line) => { // Command line parsing!
 	}
 });
 
+var onKick = function(id){
+	const sockete = io.of("/").connected[ players[id].socket ];			
+	onPlayerLeave(players[id]);			
+	io.emit("playerLeave", id, players);			
+	if (sockete){
+		sockete.disconnect();
+	}
+}
+
 var update = function () {
-	
+	if (Object.keys(players).length != 0){
+		movetimer--;
+		io.emit("timerUpdate", movetimer);
+		
+		if (movetimer <= 0){
+			players[currentplayerid].turns_until_kick--;
+			if (players[currentplayerid].turns_until_kick <= 0){
+				onKick(currentplayerid);
+			}
+			onNextTurn();
+		}
+	}
 }
 
 io.on('connection', function (socket) {
@@ -117,7 +135,8 @@ io.on('connection', function (socket) {
 	var playerJoining = new Player( newID() );
 	
 	if (playerscounter >= COLORS.length){
-		playerJoining.color = "#" + Math.floor(Math.random()*16777215).toString(16);
+		var colornum = Math.floor(Math.random()*16777215);
+		var myHex = ("000000" + colornum.toString(16)).substr(-6); playerJoining.color = "#" + myHex;
 	}else{
 		playerJoining.color = COLORS[ playerscounter ];
 	}
@@ -147,7 +166,7 @@ io.on('connection', function (socket) {
 	
 	socket.on("placeStoneRequest", function(x, y){
 		// bounds check
-		if (x >= 0 && x < board[0].length && y >= 0 && y < board.length){
+		if (x >= 0 && x < board.length && y >= 0 && y < board[0].length){
 			
 			if (board[x][y] == -1){
 					
@@ -171,7 +190,7 @@ io.on('connection', function (socket) {
 	});
 });
 
-setInterval(()=> {update()}, 50);
+setInterval(()=> {update()}, 1000 / config.TICKS_PER_SECOND);
 
 var newID = function(){
 	return Math.round(Math.random() * 100000);
@@ -204,7 +223,7 @@ var onPlace = function(socket, x,y){
 	dede = true; attacker = -2; dedesCheckedX = []; dedesCheckedY = [];
 	checkIfDede(x, y, placer.id);
 	
-	if (!dede) { onNextTurn(); } else { board[x][y] = -1; console.log("move is suicidal") };
+	if (!dede) { placer.turns_until_kick = config.TIME_OUT_TURN_COUNT; onNextTurn(); } else { board[x][y] = -1; console.log("move is suicidal") };
 }
 
 var checkIfDede = function(x, y, victimcolor){
@@ -297,14 +316,14 @@ var checkAdjacencies = function(x,y, victimcolor, attackercolor){
 }
 
 var getTile = function(x,y, attackercolor){
-	if (x >= 0 && x < board[0].length && y >= 0 && y < board.length){
+	if (x >= 0 && x < board.length && y >= 0 && y < board[0].length){
 		return board[x][y];
 	}else{
 		return attackercolor;
 	}
 }
 var getTile2 = function(x,y){
-	if (x >= 0 && x < board[0].length && y >= 0 && y < board.length){
+	if (x >= 0 && x < board.length && y >= 0 && y < board[0].length){
 		return board[x][y];
 	}else{
 		return null;
@@ -313,22 +332,26 @@ var getTile2 = function(x,y){
 
 var onNextTurn = function(){
 	
-	for (i=1;i<playerorder.length+1;i++){
-		nextindex = (playerorderindex + i) % playerorder.length;
+	if (Object.keys(players).length != 0){ // empty server will not do turns
+	
+		movetimer = config.TICKS_PER_SECOND * config.TURN_TIME_IN_SECONDS;
+		
+		for (i=1;i<playerorder.length+1;i++){
+			nextindex = (playerorderindex + i) % playerorder.length;
 
-		tempid = playerorder[nextindex];
-		if (players[tempid]){
-			break;
+			tempid = playerorder[nextindex];
+			if (players[tempid]){
+				break;
+			}
 		}
-	}
-	playerorderindex = nextindex;
-	//console.log(playerorderindex);
+		playerorderindex = nextindex;
 
-	currentplayerid = playerorder[playerorderindex];
-	
-	console.log( players[currentplayerid].name + "'s turn! (ID: " + players[currentplayerid].id + ")" );
-	
-	io.emit("nextTurn", currentplayerid);
+		currentplayerid = playerorder[playerorderindex];
+		
+		console.log( players[currentplayerid].name + "'s turn! (ID: " + players[currentplayerid].id + ")" );
+		
+		io.emit("nextTurn", currentplayerid);
+	}
 }
 
 var onPlayerLeave = function(p){
