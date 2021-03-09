@@ -15,9 +15,14 @@ leftclick to place stones. middleclick and drag, or use arrow keys or WASD to lo
 
 # Credits:
 
-This game is made possible by:
+**This game is made possible by:**
+
 aji: thank you for setting up the caddy https SSL working backend!
+
 deastl: thank you for playtesting!
+
 jamie: thank you for setting up the domain and the hostinger and for playtesting!
+
 lambdafairy: thank you for your advice on the backend!
+
 littlelamp: thank you for playtesting!
