@@ -43,6 +43,8 @@ var mousemove = function(e){
 	//console.log(mouseX + " " + mouseY);
 	
 	tilehoverX = Math.floor((untra_x(mouseX)) / TILE_SIZE); tilehoverY = Math.floor((untra_y(mouseY) )/ TILE_SIZE);
+	
+	if (socket){ socket.emit("mouse_ping"); };
 }
 
 var mousedown = function(e){
@@ -106,7 +108,7 @@ var startClient = function(){
 					}				
 				}
 				
-				socket.emit("placeStoneRequest", tilehoverX, tilehoverY);
+				if (socket){ socket.emit("placeStoneRequest", tilehoverX, tilehoverY); }
 				
 			// middle click (Drag viewport)
 			}else if (e.button == 1){
@@ -409,7 +411,7 @@ var initGUI = function(){
 	b = new TextBox(32, 32, [], 320, 512); // list of players box
 	b.update = function(){
 		
-		this.visible = (canvas.width > 500 && players);
+		this.visible = (canvas.width > 500 && players && socket.connected);
 		if (players){ if (Object.keys(players).length <= 0){ this.visible = false; }};
 		
 		this.text = [];

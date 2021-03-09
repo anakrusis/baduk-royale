@@ -142,68 +142,79 @@ var update = function () {
 }
 
 io.on('connection', function (socket) {
-	
-	playerJoining = new Player( newID() );
-	
-	if (playerscounter >= COLORS.length){
-		var colornum = Math.floor(Math.random()*16777215);
-		var myHex = ("000000" + colornum.toString(16)).substr(-6); playerJoining.color = "#" + myHex;
-	}else{
-		playerJoining.color = COLORS[ playerscounter ];
-	}
-	
-	io.emit("playerJoin", playerJoining, players, board, currentplayerid);
-	
-	socket.on("playerAddSocketAndName", function (playerid, socketid, nama) {
+	if (Object.keys(players).length < config.MAX_PLAYERS){
 		
-		playerscounter++;
-	
-		players[playerJoining.id] = playerJoining;
-	
-		playerorder.push(playerJoining.id);
+		playerJoining = new Player( newID() );
 		
-		players[playerid].socket = socketid;
-		players[playerid].name   = nama;
-	
-		if (Object.keys(players).length == 1){
-			currentplayerid = playerJoining.id;
+		if (playerscounter >= COLORS.length){
+			var colornum = Math.floor(Math.random()*16777215);
+			var myHex = ("000000" + colornum.toString(16)).substr(-6); playerJoining.color = "#" + myHex;
+		}else{
+			playerJoining.color = COLORS[ playerscounter ];
 		}
 		
-		console.log(playerJoining.name + " has joined the server (ID: " + playerJoining.id + ")" )
 		io.emit("playerJoin", playerJoining, players, board, currentplayerid);
 		
-		if (Object.keys(players).length == 1){
-			onNextTurn();
-		}
-	});
-	
-	socket.on("placeStoneRequest", function(x, y){
-		// player amount check
-		if (Object.keys(players).length > 1){
-			// bounds check
-			if (x >= 0 && x < board.length && y >= 0 && y < board[0].length){
-				// empty tile check
-				if (board[x][y] == -1){
+		socket.on("playerAddSocketAndName", function (playerid, socketid, nama) {
+			
+			playerscounter++;
+		
+			players[playerJoining.id] = playerJoining;
+		
+			playerorder.push(playerJoining.id);
+			
+			players[playerid].socket = socketid;
+			players[playerid].name   = nama;
+		
+			if (Object.keys(players).length == 1){
+				currentplayerid = playerJoining.id;
+			}
+			
+			console.log(playerJoining.name + " has joined the server (ID: " + playerJoining.id + ")" )
+			io.emit("playerJoin", playerJoining, players, board, currentplayerid);
+			
+			if (Object.keys(players).length == 1){
+				onNextTurn();
+			}
+		});
+		
+		socket.on("placeStoneRequest", function(x, y){
+			// player amount check
+			if (Object.keys(players).length > 1){
+				// bounds check
+				if (x >= 0 && x < board.length && y >= 0 && y < board[0].length){
+					// empty tile check
+					if (board[x][y] == -1){
+							
+						onPlace(socket, x,y);
 						
-					onPlace(socket, x,y);
-					
-					io.emit("boardUpdate", board);
-					
-					
+						io.emit("boardUpdate", board);
+						
+						
+					}
 				}
 			}
-		}
-	});
-	
-	socket.on("disconnect", function () {
-
-		playerLeaving = getPlayerFromSocket(socket);
-		 
-		if (playerLeaving != -1){
-			onPlayerLeave(playerLeaving);
-		}
+		});
 		
-	});
+		// this is simply used to detect AFK players whos mouse never touches the canvas
+		socket.on("mouse_ping", function(){
+			var ping_perpetrator = getPlayerFromSocket(socket);
+			ping_perpetrator.other_kick_timer = config.KICK_TIME_IN_SECONDS * config.TICKS_PER_SECOND;
+		});
+		
+		socket.on("disconnect", function () {
+
+			playerLeaving = getPlayerFromSocket(socket);
+			 
+			if (playerLeaving != -1){
+				onPlayerLeave(playerLeaving);
+			}
+			
+		});
+	}else{
+		socket.emit("textMessage", "Server is full!", 10000, 50, "#f80000", -1);
+		socket.disconnect();		
+	}
 });
 
 setInterval(()=> {update()}, 1000 / config.TICKS_PER_SECOND);
