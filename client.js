@@ -235,8 +235,8 @@ var update = function(){
 		cam_x+=CAM_MOV_SPEED;
 	}
 	
-	if (players){
-		if (Object.keys(players).length == 1){
+	if (players && !kicked && socket){
+		if (Object.keys(players).length == 1 && socket.connected){
 			messagebuffer = "Waiting for another player to join..."; textsize = 30; textcolor = "#ffffff"; textfadetimer = 10000;
 		}
 	}
@@ -252,9 +252,13 @@ var update = function(){
 
 var render = function(){
 	
+	var outerw  = window.innerWidth;
+	var outerh = window.innerHeight;
+	var window_aspect_ratio = outerh/outerw
+	
 	bodydiv = document.getElementById("bodydiv");
 	canvas.width = bodydiv.offsetWidth - 30;
-	canvas.height = canvas.width * (9/16)
+	canvas.height = canvas.width * (window_aspect_ratio)
 	
 	ctx.textAlign = "left";
 	ctx.fillStyle = "rgb(230, 170, 100)"; // blank color for the canvas
@@ -345,10 +349,10 @@ var render = function(){
 	
 	if (textfadetimer > 0){
 		ctx.fillStyle = textcolor + Math.min(255, Math.floor(16 + textfadetimer/TEXT_FADE_TIME * 240 )).toString(16);
-		ctx.font = "bold " + textsize + "px Verdana";
+		ctx.font = "bold " + (textsize * canvas.width/1000) + "px Verdana";
 		ctx.textAlign = "center";
 		
-		outStr = messagebuffer //players[currentplayerid].name + "'s turn!"
+		outStr = messagebuffer
 		
 		ctx.fillText(outStr, canvas.width / 2, canvas.height / 2);
 		ctx.fillStyle = "rgba(0, 0, 0, " + textfadetimer/TEXT_FADE_TIME + ")";
