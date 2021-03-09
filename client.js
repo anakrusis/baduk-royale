@@ -25,6 +25,8 @@ CAM_MOV_SPEED = 5;
 
 var cam_x = 0; var cam_y = 0; var cam_zoom = 1;
 
+var kicked = false; // just a temp toggle switch thing for the kick messages
+
 var mousemove = function(e){
 	newmousepos = getMousePos(e);
 	newx = newmousepos[0]; newy = newmousepos[1];
@@ -69,7 +71,7 @@ var startClient = function(){
 	
 	addEventListener("keydown", function (e) { // when a key is pressed
 		keysDown[e.keyCode] = true;
-		event.preventDefault();
+		//event.preventDefault();
 		tilehoverX = Math.floor((untra_x(mouseX)) / TILE_SIZE); tilehoverY = Math.floor((untra_y(mouseY) )/ TILE_SIZE);
 	}, false);
 
@@ -161,11 +163,21 @@ var server_connect = function(){
 		
 	});
 	
-	socket.on("textMessage", function(serverText, serverTextDuration, serverTextSize, serverTextColor){
-		messagebuffer = serverText;
-		textfadetimer = serverTextDuration;
-		textsize      = serverTextSize;
-		textcolor     = serverTextColor;
+	socket.on("kick", function(){
+		kicked = true;
+	});
+	
+	socket.on("textMessage", function(serverText, serverTextDuration, serverTextSize, serverTextColor, recipient){
+		if (kicked){
+			kicked = false;
+		}else{
+			if (recipient == -1 || recipient == player.id){
+				messagebuffer = serverText;
+				textfadetimer = serverTextDuration;
+				textsize      = serverTextSize;
+				textcolor     = serverTextColor;
+			}
+		}
 	});
 	
 	socket.on("boardUpdate", function(serverBoard){
@@ -397,7 +409,8 @@ var initGUI = function(){
 	b = new TextBox(32, 32, [], 320, 512); // list of players box
 	b.update = function(){
 		
-		this.visible = (canvas.width > 500);
+		this.visible = (canvas.width > 500 && players);
+		if (players){ if (Object.keys(players).length <= 0){ this.visible = false; }};
 		
 		this.text = [];
 		
@@ -421,10 +434,11 @@ var initGUI = function(){
 	t = new TextBox(32, 32, [], 128, 48); // move timer
 	t.fontsize = 35;
 	t.update = function(){
+		this.visible = false;
 		if (player){
+			if (players[currentplayerid]){
 			this.visible = (canvas.width > 400 && player.id == players[currentplayerid].id);
-		}else{
-			this.visible = false;
+			}
 		}
 		this.y = canvas.height - 80
 		minutetext = Math.floor(movetimer / (60*20)).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false});

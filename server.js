@@ -14,6 +14,7 @@ class Player {
 		this.id = id;
 		this.color = "#000000";
 		this.turns_until_kick = 3;
+		this.other_kick_timer = config.KICK_TIME_IN_SECONDS * config.TICKS_PER_SECOND;
 		this.active = true;
 	}
 }
@@ -36,7 +37,7 @@ var COLORS = [ "#000000", "#ffffff", "#ff0000", "#008000", "#0000ff", "#ffff00" 
 console.log("Starting server...\n") // init server
 
 var players = {};
-
+var currentplayerid;
 var playerorder = [];
 var playerorderindex = 0; // index into playerorder
 
@@ -90,7 +91,7 @@ rl.on('line', (line) => { // Command line parsing!
 				id = parseInt(arg, 10);
 				if ( players[id] ){
 					
-					onKick(id);
+					onKick(id, "none");
 					
 				}else{
 					console.log("Invalid player ID!\n");
@@ -106,16 +107,26 @@ rl.on('line', (line) => { // Command line parsing!
 	}
 });
 
-var onKick = function(id){
-	const sockete = io.of("/").connected[ players[id].socket ];			
+var onKick = function(id, reason){
+	const sockete = io.of("/").connected[ players[id].socket ];	
+	sockete.emit("kick");	
 	onPlayerLeave(players[id]);			
 	io.emit("playerLeave", id, players);			
 	if (sockete){
+		sockete.emit("textMessage", "You have been kicked! (Reason: " + reason + ")", 10000, 30, "#f80000", id);
 		sockete.disconnect();
 	}
 }
 
 var update = function () {
+	if (players[currentplayerid]){
+		players[currentplayerid].other_kick_timer--;
+		
+		if (players[currentplayerid].other_kick_timer <= 0){
+			onKick(currentplayerid, "idle");
+		}
+	}
+	
 	if (Object.keys(players).length > 1){
 		movetimer--;
 		io.emit("timerUpdate", movetimer);
@@ -123,7 +134,7 @@ var update = function () {
 		if (movetimer <= 0){
 			players[currentplayerid].turns_until_kick--;
 			if (players[currentplayerid].turns_until_kick <= 0){
-				onKick(currentplayerid);
+				onKick(currentplayerid, "passed 3 turns");
 			}
 			onNextTurn();
 		}
@@ -132,7 +143,7 @@ var update = function () {
 
 io.on('connection', function (socket) {
 	
-	var playerJoining = new Player( newID() );
+	playerJoining = new Player( newID() );
 	
 	if (playerscounter >= COLORS.length){
 		var colornum = Math.floor(Math.random()*16777215);
@@ -140,21 +151,23 @@ io.on('connection', function (socket) {
 	}else{
 		playerJoining.color = COLORS[ playerscounter ];
 	}
-	playerscounter++;
-	
-	players[playerJoining.id] = playerJoining;
-	
-	playerorder.push(playerJoining.id);
-	
-	if (Object.keys(players).length == 1){
-		currentplayerid = playerJoining.id;
-	}
 	
 	io.emit("playerJoin", playerJoining, players, board, currentplayerid);
 	
 	socket.on("playerAddSocketAndName", function (playerid, socketid, nama) {
+		
+		playerscounter++;
+	
+		players[playerJoining.id] = playerJoining;
+	
+		playerorder.push(playerJoining.id);
+		
 		players[playerid].socket = socketid;
 		players[playerid].name   = nama;
+	
+		if (Object.keys(players).length == 1){
+			currentplayerid = playerJoining.id;
+		}
 		
 		console.log(playerJoining.name + " has joined the server (ID: " + playerJoining.id + ")" )
 		io.emit("playerJoin", playerJoining, players, board, currentplayerid);
@@ -346,7 +359,7 @@ var onNextTurn = function(){
 		
 		console.log( players[currentplayerid].name + "'s turn! (ID: " + players[currentplayerid].id + ")" );
 		
-		io.emit("textMessage", players[currentplayerid].name + "'s turn!", 60, 50, players[currentplayerid].color);
+		io.emit("textMessage", players[currentplayerid].name + "'s turn!", 60, 50, players[currentplayerid].color, -1);
 		io.emit("nextTurn", currentplayerid);
 	}
 }
