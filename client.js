@@ -5,7 +5,9 @@ var ctx;
 
 var player;
 var players;
+var mostrecentmovesX = {}; var mostrecentmovesY = {};
 var board;
+var lastplayerid;    // used for the most recent turn thingy
 var currentplayerid; // just cosmetic, used for the text drawing
 var messagebuffer = "";   // text string for doing stuff
 var textfadetimer;
@@ -183,6 +185,19 @@ var server_connect = function(){
 	});
 	
 	socket.on("boardUpdate", function(serverBoard){
+
+		if (players[lastplayerid]){
+			for (i=0; i<board.length; i++){
+				for (j=0; j<board[i].length; j++){
+			
+					if (serverBoard[i][j] != board[i][j] && serverBoard[i][j] == lastplayerid){
+
+						mostrecentmovesX[lastplayerid] = i; mostrecentmovesY[lastplayerid] = j; break;
+					
+					}
+				}
+			}
+		}
 		board = serverBoard;
 	});
 	socket.on("timerUpdate", function(serverTimer){
@@ -191,6 +206,7 @@ var server_connect = function(){
 	
 	socket.on("nextTurn", function(playerid){
 		
+		lastplayerid    = currentplayerid;
 		currentplayerid = playerid;
 		textfadetimer = TEXT_FADE_TIME;
 		
@@ -286,15 +302,28 @@ var render = function(){
 				if (board[i][j] != -1){
 					
 					if (players[board[i][j]]){
+						
+						var cplayer = players[board[i][j]];
 					
 						ctx.beginPath();
-						ctx.fillStyle = players[board[i][j]].color;
+						ctx.fillStyle = cplayer.color;
 						ctx.arc( tra_x(i*TILE_SIZE + TILE_SIZE/2), tra_y(j*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/2, 0, 6.28	 )
 						ctx.fill()
 
 						ctx.strokeStyle = "#000000"
 						ctx.arc( tra_x(i*TILE_SIZE + TILE_SIZE/2), tra_y(j*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/2, 0, 6.28	 )
 						ctx.stroke();
+						
+						var recentx = mostrecentmovesX[ cplayer.id ]; var recenty = mostrecentmovesY[ cplayer.id ];
+						
+						if (i == recentx && j == recenty){
+						
+							ctx.beginPath();
+							ctx.fillStyle = invertColor(cplayer.color);
+							ctx.arc( tra_x(i*TILE_SIZE + TILE_SIZE/2), tra_y(j*TILE_SIZE + TILE_SIZE/2), TILE_SIZE/4, 0, 6.28	 )
+							ctx.fill()
+						
+						}
 					}
 				} else{
 					
@@ -340,10 +369,6 @@ var render = function(){
 		
 		ctx.arc( 56, 56+(count*32), 10, 0, 6.28);
 		ctx.fill()
-		
-		//ctx.strokeStyle = "#000000"
-		//ctx.arc( tra_x( 16, 16+(count*16), 10, 0, 6.28);
-		//ctx.stroke();
 		count++;
 	}
 	
@@ -453,6 +478,31 @@ var initGUI = function(){
 		this.text[0] = minutetext + ":" + secondtext;
 	}
 	screen_MAIN.elements.push(t);
+}
+// The following two functions are by Onur Yıldırım from the thread https://stackoverflow.com/questions/35969656/how-can-i-generate-the-opposite-color-according-to-current-color
+function invertColor(hex) {
+    if (hex.indexOf('#') === 0) {
+        hex = hex.slice(1);
+    }
+    // convert 3-digit hex to 6-digits.
+    if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    if (hex.length !== 6) {
+        throw new Error('Invalid HEX color.');
+    }
+    // invert color components
+    var r = (255 - parseInt(hex.slice(0, 2), 16)).toString(16),
+        g = (255 - parseInt(hex.slice(2, 4), 16)).toString(16),
+        b = (255 - parseInt(hex.slice(4, 6), 16)).toString(16);
+    // pad each with zeros and return
+    return '#' + padZero(r) + padZero(g) + padZero(b);
+}
+
+function padZero(str, len) {
+    len = len || 2;
+    var zeros = new Array(len).join('0');
+    return (zeros + str).slice(-len);
 }
 
 startClient();
